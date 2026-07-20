@@ -1,0 +1,5 @@
+Documentation folder for AI Kubernetes Troubleshooting Agent.
+Future contents:
+- Architecture diagrams
+- Deployment guides
+- Runbook & troubleshooting playbook templates

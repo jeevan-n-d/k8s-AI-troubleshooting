@@ -1,0 +1,15 @@
+{
+  "..\\node_modules\\@insforge\\sdk\\dist\\index.mjs -> crypto": {
+    "id": 5683,
+    "files": [
+      "static/chunks/aaea2bcf.ef561785f1caae75.js",
+      "static/chunks/309.e632cf40020a7357.js"
+    ]
+  },
+  "..\\node_modules\\@insforge\\sdk\\dist\\index.mjs -> socket.io-client": {
+    "id": 5040,
+    "files": [
+      "static/chunks/40.b9a87095213e5e3f.js"
+    ]
+  }
+}
