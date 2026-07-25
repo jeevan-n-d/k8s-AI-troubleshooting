@@ -1,0 +1,10 @@
+@"
+**/__pycache__/
+**/node_modules/
+**/.next/
+*.py[cod]
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+"@ | Set-Content .gitignore

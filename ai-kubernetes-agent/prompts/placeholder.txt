@@ -1,0 +1,5 @@
+System prompts and template definitions for OpenRouter AI reasoning.
+Future contents:
+- triage_system_prompt.txt
+- root_cause_analysis_prompt.txt
+- resolution_recommendation_prompt.txt
