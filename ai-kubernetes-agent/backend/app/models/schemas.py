@@ -23,9 +23,15 @@ class ClustersResponse(BaseModel):
 
 class DiagnosisInfo(BaseModel):
     root_cause: str
+    root_cause_type: Optional[str] = None
+    severity: Optional[str] = "Critical"
+    evidence: Optional[List[str]] = []
+    reasoning: Optional[str] = None
     explanation: str
     fix: str
     kubectl_command: str
+    kubectl_commands: Optional[List[str]] = []
+    prevention: Optional[List[str]] = []
     confidence: int
 
 class InvestigateResponse(BaseModel):
