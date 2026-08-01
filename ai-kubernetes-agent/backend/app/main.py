@@ -55,7 +55,7 @@ def debug_cluster(cluster: Optional[str] = None):
     kubeconfig_loaded = os.path.exists(kubeconfig_path) if kubeconfig_path else False
     
     # 2. Get current context
-    current_context = cluster if cluster else "Unknown"
+    current_context = cluster if cluster else kubectl_executor.resolve_current_context()
     cluster_reachable = False
     namespaces = []
     nodes = []
@@ -72,21 +72,12 @@ def debug_cluster(cluster: Optional[str] = None):
     
     err_context = ""
     err_reachable = ""
-    context_args = ["--context", cluster] if cluster else []
+    context_args = ["--context", current_context] if current_context else []
     try:
         # Get current context if not explicitly provided
         if not cluster:
-            res = subprocess.run(
-                [kubectl_bin, "config", "current-context", "--kubeconfig", kubeconfig_path] if kubeconfig_loaded else [kubectl_bin, "config", "current-context"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                timeout=5
-            )
-            if res.returncode == 0:
-                current_context = res.stdout.strip()
-            else:
-                err_context = res.stderr.strip()
+            current_context = kubectl_executor.resolve_current_context()
+            context_args = ["--context", current_context] if current_context else []
             
         # Check cluster reachability
         res_reach = subprocess.run(
@@ -232,11 +223,8 @@ def debug_cluster(cluster: Optional[str] = None):
 def get_contexts():
     logger.info("GET /contexts endpoint called")
     try:
-        exit_code, stdout, stderr = kubectl_executor.execute(["config", "get-contexts", "-o", "name"])
-        contexts = [c.strip() for c in stdout.splitlines() if c.strip()]
-        
-        exit_code_curr, stdout_curr, stderr_curr = kubectl_executor.execute(["config", "current-context"])
-        current_context = stdout_curr.strip()
+        contexts = kubectl_executor.get_available_contexts()
+        current_context = kubectl_executor.resolve_current_context()
         
         return {
             "status": "success",

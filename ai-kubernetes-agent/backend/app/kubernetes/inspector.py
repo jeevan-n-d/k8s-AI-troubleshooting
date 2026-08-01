@@ -54,6 +54,18 @@ class PodInspector:
                         is_unhealthy = True
 
             node_name = status_obj.get("nodeName", "Unknown")
+            pod_ip = status_obj.get("podIP", "Unknown")
+            
+            # Fetch container images
+            spec_obj = item.get("spec", {})
+            containers = spec_obj.get("containers", [])
+            images = [c.get("image", "Unknown") for c in containers] if containers else []
+            image_str = ", ".join(images) if images else "Unknown"
+            
+            # Compute ready status
+            ready_count = sum(1 for cs in container_statuses if cs.get("ready", False))
+            total_containers = len(container_statuses) if container_statuses else len(containers)
+            ready_status = f"{ready_count}/{total_containers}" if total_containers > 0 else "0/1"
 
             if phase in ["Failed", "Pending"] or is_unhealthy:
                 problematic_pods.append({
@@ -62,7 +74,10 @@ class PodInspector:
                     "status": state_reason or phase,
                     "phase": phase,
                     "restarts": restarts,
-                    "node": node_name
+                    "node": node_name,
+                    "ip": pod_ip,
+                    "image": image_str,
+                    "ready_status": ready_status
                 })
             else:
                 healthy_count += 1

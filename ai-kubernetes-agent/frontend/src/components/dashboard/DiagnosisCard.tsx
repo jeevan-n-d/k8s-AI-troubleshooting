@@ -12,6 +12,16 @@ export interface DiagnosisCardProps {
 
 export default function DiagnosisCard({ diagnosis, investigation, activeSubTab = 'Overview', healthScore: backendHealthScore }: DiagnosisCardProps) {
   const [copied, setCopied] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState<Record<string, boolean>>({
+    pods: false,
+    deployments: true,
+    events: true,
+    logs: true
+  });
+
+  const toggleCollapse = (section: string) => {
+    setIsCollapsed(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   // Dynamic calculations based on live diagnosis data
   const hasProblematicPods = investigation?.pods?.problematic_pods && investigation.pods.problematic_pods.length > 0;
@@ -44,6 +54,56 @@ export default function DiagnosisCard({ diagnosis, investigation, activeSubTab =
     } catch (err) {
       console.error('Failed to copy text: ', err);
     }
+  };
+
+  // Turn raw remediation list into beautiful visual checklists
+  const renderRemediationSteps = (fixText: string) => {
+    if (!fixText) return null;
+    
+    // Split by newline and filter out empty items
+    const steps = fixText.split('\n').map(s => s.trim()).filter(Boolean);
+    
+    return (
+      <div className="space-y-3 pt-1">
+        {steps.map((step, idx) => {
+          // Remove leading numbers or hyphens
+          const cleanStep = step.replace(/^\d+[\.\-\s]*/, '');
+          return (
+            <div key={idx} className="flex items-start gap-3 bg-slate-950/40 p-4 rounded-xl border border-slate-850 hover:border-slate-800 transition-colors">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold font-mono">
+                {idx + 1}
+              </span>
+              <p className="text-xs text-slate-300 font-sans leading-relaxed">{cleanStep}</p>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Syntax highlighter for kubectl terminal commands
+  const highlightCommand = (cmd: string) => {
+    if (!cmd) return null;
+    const parts = cmd.split(' ');
+    return (
+      <div className="p-4 bg-slate-950 font-mono text-[11px] rounded-xl overflow-x-auto border border-slate-850 leading-relaxed select-all">
+        {parts.map((part, i) => {
+          let colorClass = 'text-emerald-400';
+          if (part === 'kubectl') {
+            colorClass = 'text-blue-400 font-bold';
+          } else if (['get', 'describe', 'logs', 'rollout', 'edit', 'set', 'delete', 'apply'].includes(part)) {
+            colorClass = 'text-amber-400 font-bold';
+          } else if (part.startsWith('-')) {
+            colorClass = 'text-slate-500';
+          }
+          return (
+            <span key={i} className={`${colorClass} mr-1 inline-block`}>
+              {part}
+            </span>
+          );
+        })}
+      </div>
+    );
   };
 
   // Only render if activeSubTab is 'Overview' or 'AI Report'
@@ -210,35 +270,45 @@ export default function DiagnosisCard({ diagnosis, investigation, activeSubTab =
               {/* Pods Status */}
               {investigation?.pods && (
                 <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg">
-                  <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex justify-between items-center">
-                    <span className="flex items-center gap-2">
+                  <button
+                    onClick={() => toggleCollapse('pods')}
+                    className="w-full flex items-center justify-between focus:outline-none"
+                  >
+                    <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-2">
                       <span className="text-teal-400">☸</span> Pod Workloads Evidence
-                    </span>
-                    <span className={`text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full ${
-                      investigation.pods.healthy ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
-                    }`}>
-                      {investigation.pods.healthy ? 'Healthy' : 'Issues Found'}
-                    </span>
-                  </h4>
-                  <div className="grid grid-cols-2 gap-3 text-[11px]">
-                    <div className="bg-slate-950/40 border border-slate-850 p-3 rounded-xl font-mono text-slate-300">
-                      Total: {investigation.pods.total_pods}
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                        investigation.pods.healthy ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                      }`}>
+                        {investigation.pods.healthy ? 'Healthy' : 'Issues Found'}
+                      </span>
+                      <span className="text-xs text-slate-500 font-bold">{isCollapsed['pods'] ? '▼' : '▲'}</span>
                     </div>
-                    <div className="bg-slate-950/40 border border-slate-850 p-3 rounded-xl font-mono text-slate-300">
-                      Healthy: {investigation.pods.healthy_pods_count}
-                    </div>
-                  </div>
-                  {investigation.pods.problematic_pods && investigation.pods.problematic_pods.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-slate-850/60">
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block">Problematic Pods</span>
-                      <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
-                        {investigation.pods.problematic_pods.map((p: any, idx: number) => (
-                          <div key={idx} className="flex justify-between items-center text-[11px] bg-slate-950/60 p-2.5 rounded-lg border border-slate-850/45 font-mono">
-                            <span className="text-slate-300 truncate max-w-[150px]">{p.name}</span>
-                            <span className="bg-rose-500/10 text-rose-400 px-2 py-0.5 rounded border border-rose-500/20 text-[9px] font-bold font-sans">{p.status}</span>
-                          </div>
-                        ))}
+                  </button>
+                  {!isCollapsed['pods'] && (
+                    <div className="space-y-4 pt-4 border-t border-slate-800/40">
+                      <div className="grid grid-cols-2 gap-3 text-[11px]">
+                        <div className="bg-slate-950/40 border border-slate-850 p-3 rounded-xl font-mono text-slate-300">
+                          Total: {investigation.pods.total_pods}
+                        </div>
+                        <div className="bg-slate-950/40 border border-slate-850 p-3 rounded-xl font-mono text-slate-300">
+                          Healthy: {investigation.pods.healthy_pods_count}
+                        </div>
                       </div>
+                      {investigation.pods.problematic_pods && investigation.pods.problematic_pods.length > 0 && (
+                        <div className="space-y-2 pt-2 border-t border-slate-850/60">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block">Problematic Pods</span>
+                          <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
+                            {investigation.pods.problematic_pods.map((p: any, idx: number) => (
+                              <div key={idx} className="flex justify-between items-center text-[11px] bg-slate-950/60 p-2.5 rounded-lg border border-slate-850/45 font-mono">
+                                <span className="text-slate-300 truncate max-w-[150px]">{p.name}</span>
+                                <span className="bg-rose-500/10 text-rose-400 px-2 py-0.5 rounded border border-rose-500/20 text-[9px] font-bold font-sans">{p.status}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -247,30 +317,40 @@ export default function DiagnosisCard({ diagnosis, investigation, activeSubTab =
               {/* Deployments Status */}
               {investigation?.deployments && (
                 <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg">
-                  <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex justify-between items-center">
-                    <span className="flex items-center gap-2">
+                  <button
+                    onClick={() => toggleCollapse('deployments')}
+                    className="w-full flex items-center justify-between focus:outline-none"
+                  >
+                    <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-2">
                       <span className="text-amber-400">📦</span> Deployment Workloads
-                    </span>
-                    <span className={`text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full ${
-                      investigation.deployments.healthy ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
-                    }`}>
-                      {investigation.deployments.healthy ? 'Healthy' : 'Issues Found'}
-                    </span>
-                  </h4>
-                  <div className="bg-slate-950/40 border border-slate-850 p-3 rounded-xl font-mono text-slate-300 text-[11px]">
-                    Total Checked Deployments: {investigation.deployments.all_deployments_count}
-                  </div>
-                  {investigation.deployments.unhealthy_deployments && investigation.deployments.unhealthy_deployments.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-slate-850/60">
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block">Unhealthy Deployments</span>
-                      <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
-                        {investigation.deployments.unhealthy_deployments.map((d: any, idx: number) => (
-                          <div key={idx} className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-850/45 font-mono text-[11px] text-slate-300 flex justify-between">
-                            <span>{d.name}</span>
-                            <span className="text-rose-400 text-[10px]">Desired: {d.replicas_desired} / Avail: {d.replicas_available}</span>
-                          </div>
-                        ))}
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                        investigation.deployments.healthy ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                      }`}>
+                        {investigation.deployments.healthy ? 'Healthy' : 'Issues Found'}
+                      </span>
+                      <span className="text-xs text-slate-500 font-bold">{isCollapsed['deployments'] ? '▼' : '▲'}</span>
+                    </div>
+                  </button>
+                  {!isCollapsed['deployments'] && (
+                    <div className="space-y-4 pt-4 border-t border-slate-800/40">
+                      <div className="bg-slate-950/40 border border-slate-855 p-3 rounded-xl font-mono text-slate-300 text-[11px]">
+                        Total Checked Deployments: {investigation.deployments.all_deployments_count}
                       </div>
+                      {investigation.deployments.unhealthy_deployments && investigation.deployments.unhealthy_deployments.length > 0 && (
+                        <div className="space-y-2 pt-2 border-t border-slate-850/60">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block">Unhealthy Deployments</span>
+                          <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
+                            {investigation.deployments.unhealthy_deployments.map((d: any, idx: number) => (
+                              <div key={idx} className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-850/45 font-mono text-[11px] text-slate-300 flex justify-between">
+                                <span>{d.name}</span>
+                                <span className="text-rose-400 text-[10px]">Desired: {d.replicas_desired} / Avail: {d.replicas_available}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -278,42 +358,62 @@ export default function DiagnosisCard({ diagnosis, investigation, activeSubTab =
 
               {/* Events & Warning Log Summary */}
               {investigation?.events && (
-                <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800 rounded-2xl p-6 space-y-3 shadow-lg">
-                  <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex justify-between items-center">
-                    <span className="flex items-center gap-2">
+                <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg">
+                  <button
+                    onClick={() => toggleCollapse('events')}
+                    className="w-full flex items-center justify-between focus:outline-none"
+                  >
+                    <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-2">
                       <span className="text-rose-400">⚠️</span> Warning Events Log
-                    </span>
-                    <span className="font-mono text-xs text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
-                      {investigation.events.total_warnings_detected} warnings
-                    </span>
-                  </h4>
-                  {investigation.events.warning_events && investigation.events.warning_events.length > 0 ? (
-                    <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
-                      {investigation.events.warning_events.slice(0, 3).map((evt: any, idx: number) => (
-                        <div key={idx} className="bg-slate-950/40 p-2.5 rounded-xl border border-slate-850/40 font-mono text-[10px] text-slate-300 leading-relaxed">
-                          <div className="flex justify-between font-bold text-amber-400 text-[9px] uppercase tracking-wider mb-1">
-                            <span>{evt.reason}</span>
-                            <span>{evt.object_kind}</span>
-                          </div>
-                          {evt.message}
-                        </div>
-                      ))}
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
+                        {investigation.events.total_warnings_detected} warnings
+                      </span>
+                      <span className="text-xs text-slate-500 font-bold">{isCollapsed['events'] ? '▼' : '▲'}</span>
                     </div>
-                  ) : (
-                    <p className="text-[11px] text-slate-500 italic">No warning events logged in current context.</p>
+                  </button>
+                  {!isCollapsed['events'] && (
+                    <div className="space-y-4 pt-4 border-t border-slate-800/40">
+                      {investigation.events.warning_events && investigation.events.warning_events.length > 0 ? (
+                        <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
+                          {investigation.events.warning_events.slice(0, 3).map((evt: any, idx: number) => (
+                            <div key={idx} className="bg-slate-950/40 p-2.5 rounded-xl border border-slate-855 font-mono text-[10px] text-slate-300 leading-relaxed">
+                              <div className="flex justify-between font-bold text-amber-400 text-[9px] uppercase tracking-wider mb-1">
+                                <span>{evt.reason}</span>
+                                <span>{evt.object_kind}</span>
+                              </div>
+                              {evt.message}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-slate-500 italic">No warning events logged in current context.</p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
 
               {/* Pod logs available snippet preview */}
               {investigation?.logs?.raw_logs_snippet && (
-                <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800 rounded-2xl p-6 space-y-3 shadow-lg">
-                  <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-2">
-                    <span className="text-indigo-400">📜</span> Problematic Container Log Preview
-                  </h4>
-                  <pre className="p-4 bg-slate-950 text-slate-300 font-mono text-[10px] rounded-xl overflow-x-auto border border-slate-850 max-h-36 leading-relaxed select-all">
-                    {investigation.logs.raw_logs_snippet}
-                  </pre>
+                <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg">
+                  <button
+                    onClick={() => toggleCollapse('logs')}
+                    className="w-full flex items-center justify-between focus:outline-none"
+                  >
+                    <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-2">
+                      <span className="text-indigo-400">📜</span> Container Log Preview
+                    </h4>
+                    <span className="text-xs text-slate-500 font-bold">{isCollapsed['logs'] ? '▼' : '▲'}</span>
+                  </button>
+                  {!isCollapsed['logs'] && (
+                    <div className="pt-4 border-t border-slate-800/40">
+                      <pre className="p-4 bg-slate-950 text-slate-300 font-mono text-[10px] rounded-xl overflow-x-auto border border-slate-850 max-h-36 leading-relaxed select-all">
+                        {investigation.logs.raw_logs_snippet}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -345,9 +445,7 @@ export default function DiagnosisCard({ diagnosis, investigation, activeSubTab =
               </svg>
               Suggested SRE Remediation Playbook
             </h4>
-            <div className="text-xs text-slate-300 bg-slate-950/60 border border-slate-850 rounded-xl p-5 leading-relaxed whitespace-pre-wrap leading-relaxed">
-              {diagnosis.fix}
-            </div>
+            {renderRemediationSteps(diagnosis.fix)}
           </div>
 
           {/* Interactive Shell Terminal emulator */}
@@ -392,9 +490,7 @@ export default function DiagnosisCard({ diagnosis, investigation, activeSubTab =
                 </button>
               </div>
               {/* Command text block */}
-              <pre className="p-5 overflow-x-auto text-[11px] text-emerald-400 font-mono leading-relaxed select-all">
-                {diagnosis.kubectl_command}
-              </pre>
+              {highlightCommand(diagnosis.kubectl_command)}
             </div>
           </div>
         </section>

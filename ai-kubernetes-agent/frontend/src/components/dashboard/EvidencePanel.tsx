@@ -151,23 +151,35 @@ export default function EvidencePanel({ investigation: inv, clusterDetails, acti
               </div>
 
               {inv.pods.problematic_pods && inv.pods.problematic_pods.length > 0 ? (
-                <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
+                <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
                   <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block mb-1">Unhealthy Pod Specifications</span>
                   {inv.pods.problematic_pods.map((pod: any, i) => (
                     <div key={i} className="bg-slate-950/80 border border-slate-850/60 p-4 rounded-xl text-xs hover:border-slate-800 transition-colors space-y-2.5">
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2.5">
-                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                          <span className={`w-2 h-2 rounded-full animate-pulse ${
+                            pod.status === 'Running' ? 'bg-emerald-500' : 'bg-rose-500'
+                          }`}></span>
                           <span className="font-bold font-mono text-slate-200">{pod.name}</span>
                         </div>
-                        <span className="bg-rose-500/15 border border-rose-500/30 text-rose-400 font-semibold px-2.5 py-0.5 rounded-full text-[10px]">
+                        <span className={`border font-semibold px-2.5 py-0.5 rounded-full text-[10px] flex items-center gap-1 ${
+                          pod.status === 'Running'
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                            : pod.status === 'CrashLoopBackOff'
+                            ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 animate-pulse'
+                            : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                        }`}>
+                          {pod.status === 'CrashLoopBackOff' ? '🔄 ' : pod.status === 'Running' ? '🟢 ' : '⚠️ '}
                           {pod.status}
                         </span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 text-[10px] bg-slate-950 p-2.5 rounded border border-slate-900 text-slate-400">
-                        <div>Phase: <span className="text-slate-200 font-mono font-bold">{pod.phase}</span></div>
-                        <div>Restarts: <span className="text-rose-400 font-mono font-bold">{pod.restarts ?? 0}</span></div>
-                        <div className="truncate">Node: <span className="text-blue-400 font-mono font-bold">{pod.node || 'Unknown'}</span></div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-[10px] bg-slate-950 p-3 rounded-xl border border-slate-900 text-slate-400 leading-relaxed font-mono">
+                        <div><span className="text-slate-500">Phase:</span> <span className="text-slate-200 font-bold">{pod.phase}</span></div>
+                        <div><span className="text-slate-500">Ready:</span> <span className="text-emerald-400 font-bold">⏱ {pod.ready_status || '0/1'}</span></div>
+                        <div><span className="text-slate-500">Restarts:</span> <span className="text-rose-400 font-bold">🔄 {pod.restarts ?? 0}</span></div>
+                        <div><span className="text-slate-500">Node:</span> <span className="text-blue-400 font-bold truncate block max-w-full" title={pod.node}>{pod.node || 'Unknown'}</span></div>
+                        <div><span className="text-slate-500">Pod IP:</span> <span className="text-slate-300 font-semibold">{pod.ip || 'Unknown'}</span></div>
+                        <div className="col-span-2 sm:col-span-3 truncate"><span className="text-slate-500">Image:</span> <span className="text-slate-300 font-semibold text-[9px] break-all" title={pod.image}>{pod.image || 'Unknown'}</span></div>
                       </div>
                     </div>
                   ))}

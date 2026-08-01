@@ -75,7 +75,7 @@ class KubectlExecutor:
         command.extend(args)
 
         # Bypass TLS/x509 certificate errors for host.docker.internal
-        if self.kubeconfig_file and "mapped_kubeconfig" in self.kubeconfig_file:
+        if self.kubeconfig_file and "mapped_kubeconfig" in self.kubeconfig_file and "config" not in args:
             command.append("--insecure-skip-tls-verify=true")
 
         logger.info(f"Kubeconfig path: {self.kubeconfig_file}")
@@ -123,5 +123,32 @@ class KubectlExecutor:
         except json.JSONDecodeError as jde:
             logger.error(f"Failed to parse JSON output: {jde}")
             return -1, {}, f"JSON parsing failed: {str(jde)}. Raw output: {stdout[:200]}"
+
+    def resolve_current_context(self) -> str:
+        """
+        Resolves the current active Kubernetes context.
+        """
+        try:
+            exit_code, stdout, stderr = self.execute(["config", "current-context"])
+            if exit_code == 0:
+                ctx = stdout.strip()
+                if ctx:
+                    return ctx
+        except Exception as e:
+            logger.warning(f"Failed to get current context via kubectl CLI: {e}")
+        return "Unknown"
+
+    def get_available_contexts(self) -> List[str]:
+        """
+        Retrieves the list of available Kubernetes contexts.
+        """
+        try:
+            exit_code, stdout, stderr = self.execute(["config", "get-contexts", "-o", "name"])
+            if exit_code == 0:
+                contexts = [c.strip() for c in stdout.splitlines() if c.strip()]
+                return contexts
+        except Exception as e:
+            logger.warning(f"Failed to get contexts list via kubectl CLI: {e}")
+        return []
 
 kubectl_executor = KubectlExecutor()
