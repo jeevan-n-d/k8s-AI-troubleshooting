@@ -24,6 +24,24 @@
 
 ## Completed during this Session
 
+### Context Synchronization & Command Fixes
+* **Kubectl Executor Flag Isolation:** Refactored the `KubectlExecutor` to stop appending `--insecure-skip-tls-verify=true` to native `config` CLI commands. This completely resolves previous crashes on `/contexts` query.
+* **Unified Context Helpers:** Introduced centralized `resolve_current_context` and `get_available_contexts` on the executor to unify active context discovery with full multi-context support and error resilience.
+* **UI/UX Sync Fix:** Restored proper dynamic `contexts` loading in the frontend, preventing accidental stale GKE fallbacks and correctly displaying `docker-desktop` as selected context.
+
+### Rich SRE AI Diagnostic UI/UX Upgrades
+* **Dynamic SRE Reasoning Rules:** Updated the OpenRouter system and user prompts to teach the model how to reason step-by-step (logs take highest priority, CrashLoopBackOff treated strictly as a symptom, evidence must be quoted).
+* **Extended JSON Output Schema:** Integrated a richer schema mapping `evidence`, `reasoning`, `prevention`, `severity` (Critical/High/Medium/Low), and computed `confidence` dynamically.
+* **Remediation Checklists:** Upgraded the SRE playbook on the frontend to parse raw instructions and render them as step-by-step checklist cards.
+* **Interactive Terminal Commands:** Styled the `kubectl_command` box with color-coded syntax highlighting (for kubectl commands, verbs, and flags) and instant copy button feedback.
+* **Rich Pod Workload Evidence:** Enriched Pod inspector on the backend to dynamically fetch and display **Pod IP**, **Container Images**, and **Ready Status** ratios for all problematic pods.
+* **Overview Collapsible Cards:** Grouped raw log previews, warning events, workloads evidence, and deployments into collapsible evidence cards in the right-hand column.
+
+### Standard Resources Explorer Tab
+* **Bypassed Workload Filtering:** Ensured that the Resources Explorer behaves exactly like the raw CLI (`kubectl get pods -n <selected-namespace>`), allowing SREs to explore and inspect core platform system components (e.g., `kube-system`) without application workload namespace filters.
+* **Dynamic Dropdown Population:** Bypassed hardcoded placeholder dropdown lists by populating available explorer namespaces directly from the live cluster `/namespaces` query.
+* **Comprehensive Resource Inspection:** Renders tables and parameters for **Pods**, **Deployments**, **Services**, and **Events** dynamically side-by-side inside the Resources Explorer.
+
 ### SRE Planner Card Redesign
 * Increased the Planner Card width to `lg:col-span-5` inside the 12-column workspace layout.
 * Implemented a strict 4-column CSS grid Target Scope segmented selector to resolve button overflow issues.

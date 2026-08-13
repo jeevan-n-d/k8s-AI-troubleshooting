@@ -9,6 +9,7 @@ RUN npm install
 COPY . .
 
 # Disable telemetry and build
+#automatically sends usage/diagnostic information to the software provider.
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
