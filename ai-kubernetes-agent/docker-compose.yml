@@ -17,8 +17,6 @@ services:
       OPENROUTER_MODEL: ${OPENROUTER_MODEL}
       KUBECONFIG_PATH: ${KUBECONFIG_PATH}
 
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
     restart: always
 
